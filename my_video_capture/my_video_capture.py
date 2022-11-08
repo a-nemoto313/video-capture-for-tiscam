@@ -8,7 +8,7 @@ from my_video_capture import tisgrabber as tis
 
 
 class MyVideoCapture:
-    def __init__(self, dll_path="./tisgrabber_x64.dll", config_file_path=""):
+    def __init__(self, config_file_path="", dll_path="./tisgrabber_x64.dll"):
         """
         argoカメラクラス。単体カメラを表示するクラス
 
@@ -148,10 +148,9 @@ class MyVideoCapture:
 
 
 if __name__ == '__main__':
-    tisgrabber = "./tisgrabber_x64.dll"
     config_file = ""
 
-    cap = MyVideoCapture(tisgrabber, config_file)
+    cap = MyVideoCapture(config_file)
 
     cv2.namedWindow("img", cv2.WINDOW_NORMAL)
     cv2.resizeWindow("img", 1200, 900)
