@@ -41,3 +41,6 @@ cv2.destroyAllWindows()
 
 - 変更の際は必ずバージョンを更新。masterブランチ上のコミットにバージョン番号が同じものが存在しないように。[バージョンの付け方](https://note.com/a_iubimstudio/n/n65413e4ffcc9)
 > ![バージョン](https://backlog.com/ja/git-tutorial/assets/img/stepup/stepup5_6.png)  
+
+# Tokenの取得方法
+[Personal Access Token の設定](https://dev.classmethod.jp/articles/github-pat-with-greengrass/#toc-3)
