@@ -29,18 +29,11 @@ cap.release()
 cv2.destroyAllWindows()
 ```
 
-# 運用方法
-- 緊急の場合を除いて、master・developブランチに直接コミットしないこと。
-- 許可なくmaster・developブランチにマージしないこと。以下のように運用。  
-(githubを有料プランに切り替えれば許可したアカウントしかマージできなくなるらしい)  
-  1. developからブランチを作成し、変更・修正をコミット
-  2. そのブランチをリモートにプッシュ
-  3. githubで該当のブランチを選択、Pull requestをクリック
-  4. *base:* がdevelop、*compare:* が自分が作業したブランチになっていることを確認し、タイトルと説明を入力、Create Pull Requestをクリック。  
-  5. レビュワーは変更内容を確認し、問題なければMerge pull request、delete the branch。
+# LICENSE
+Copyright (C) 2022, サイトー株式会社, all rights reserved.
 
-- 変更の際は必ずバージョンを更新。masterブランチ上のコミットにバージョン番号が同じものが存在しないように。[バージョンの付け方](https://note.com/a_iubimstudio/n/n65413e4ffcc9)
-> ![バージョン](https://backlog.com/ja/git-tutorial/assets/img/stepup/stepup5_6.png)  
-
-# Tokenの取得方法
-[Personal Access Token の設定](https://dev.classmethod.jp/articles/github-pat-with-greengrass/#toc-3)
+# INCLUDED
+https://github.com/TheImagingSource/IC-Imaging-Control-Samples/tree/master/Python/tisgrabber/samples  
+tisgrabber.py  
+tisgrabber_x64.dll  
+TIS_UDSHL11_x64.dll  
