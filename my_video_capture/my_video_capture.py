@@ -42,7 +42,7 @@ class MyVideoCapture:
         self.ic.IC_CreateFrameFilter(tis.T("Rotate Flip"), self._filter)
 
         self._flip_image()
-        self._start()
+        self.start()
         self._get_image_description()
 
     def read(self):
@@ -84,29 +84,29 @@ class MyVideoCapture:
     def load_properties(self, config_file_path):
         """
         設定ファイルのロード。上手く読み込めなかったらエラーメッセージ
+        設定ファイルを切り替える際もこの関数を使用する
 
         Args:
             config_file_path (str):***.xml 読み込むファイルの場所
 
         """
         if os.path.exists(config_file_path):  # 設定ファイルが存在する場合➔設定を読み込み、カメラを起動
-            self._grabber = self.ic.IC_LoadDeviceStateFromFile(None, tis.T(config_file_path))
+            self._grabber = self.ic.IC_LoadDeviceStateFromFile(self._grabber, tis.T(config_file_path))
         else:  # 設定ファイルが存在しない場合➔カメラは起動するが、設定を読み込めなかったメッセージを表示
             self._grabber = self.ic.IC_CreateGrabber()
             unique_name = self.ic.IC_GetUniqueNamefromList(0)
             self.ic.IC_OpenDevByUniqueName(self._grabber, unique_name)  # カメラ接続
             self.ic.IC_MsgBox(tis.T("Can not load config"), tis.T("Error"))  # エラーウィンドウが表示される
 
-    def switch_properties(self, config_file_path):
+    def start(self, create_window=False):
         """
-        設定ファイルを切り替えロード
+        画像の取得の開始
+
         Args:
-            config_file_path (str): ***.xml　読み込むファイルの場所
+            create_window (bool): Trueだと、tisgrabberがウィンドウを生成してくれる
+
         """
-        self.ic.IC_LoadDeviceStateFromFileEx(self._grabber, config_file_path.encode("utf-8"), 1)
-        # 以下でも切り替えることが可能
-        # self._grabber = self.ic.IC_LoadDeviceStateFromFile(self._grabber, tis.T(config_file_path))
-        self._start()
+        self.ic.IC_StartLive(self._grabber, create_window)
 
     def show_property_dialog(self):
         """
@@ -135,16 +135,6 @@ class MyVideoCapture:
         if device_count == 0:  # カメラの接続が無い場合
             self.ic.IC_MsgBox(tis.T("No device was found"), tis.T("Error"))  # エラーウィンドウが表示される
             raise ConnectionError("No device found.")
-
-    def _start(self, create_window=False):
-        """
-        画像の取得の開始
-
-        Args:
-            create_window (bool): Trueだと、tisgrabberがウィンドウを生成してくれる
-
-        """
-        self.ic.IC_StartLive(self._grabber, create_window)
 
     def _flip_image(self):
         """画像を反転させる"""
@@ -180,9 +170,12 @@ if __name__ == '__main__':
         if k == 27:
             break
         elif k == ord("1"):  # 設定ファイルが切り替わる
-            cap.switch_properties(config_file1)
+            cap.load_properties(config_file1)
+            cap.start()
         elif k == ord("2"):  # 設定ファイルが切り替わる
-            cap.switch_properties(config_file2)
+            cap.load_properties(config_file2)
+            cap.start()
+
         elif k == ord("s"):
             cap.save_properties(config_file1)
         elif k == ord("a"):
