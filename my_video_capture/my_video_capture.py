@@ -4,7 +4,7 @@ import os
 import cv2
 import numpy as np
 
-from my_video_capture import tisgrabber as tis
+import tisgrabber as tis
 
 
 class MyVideoCapture:
@@ -41,6 +41,7 @@ class MyVideoCapture:
         self._filter = tis.HFRAMEFILTER()
         self.ic.IC_CreateFrameFilter(tis.T("Rotate Flip"), self._filter)
 
+        self._flip_image()
         self._start()
         self._get_image_description()
 
@@ -96,6 +97,17 @@ class MyVideoCapture:
             self.ic.IC_OpenDevByUniqueName(self._grabber, unique_name)  # カメラ接続
             self.ic.IC_MsgBox(tis.T("Can not load config"), tis.T("Error"))  # エラーウィンドウが表示される
 
+    def switch_properties(self, config_file_path):
+        """
+        設定ファイルを切り替えロード
+        Args:
+            config_file_path (str): ***.xml　読み込むファイルの場所
+        """
+        self.ic.IC_LoadDeviceStateFromFileEx(self._grabber, config_file_path.encode("utf-8"), 1)
+        # 以下でも切り替えることが可能
+        # self._grabber = self.ic.IC_LoadDeviceStateFromFile(self._grabber, tis.T(config_file_path))
+        self._start()
+
     def show_property_dialog(self):
         """
         設定変更ウィンドウを表示
@@ -132,11 +144,13 @@ class MyVideoCapture:
             create_window (bool): Trueだと、tisgrabberがウィンドウを生成してくれる
 
         """
+        self.ic.IC_StartLive(self._grabber, create_window)
+
+    def _flip_image(self):
+        """画像を反転させる"""
         # 取得した画像をnumpy配列に変換するとなぜか上下反転されてるので、反転フィルターを事前に加える
         self.ic.IC_AddFrameFilterToDevice(self._grabber, self._filter)
         self.ic.IC_FrameFilterSetParameterBoolean(self._filter, tis.T("Flip V"), 1)
-
-        self.ic.IC_StartLive(self._grabber, create_window)
 
     def _get_image_description(self):
         """取得する画像の情報を設定"""
@@ -148,9 +162,10 @@ class MyVideoCapture:
 
 
 if __name__ == '__main__':
-    config_file = ""
+    config_file1 = ""
+    config_file2 = ""
 
-    cap = MyVideoCapture(config_file)
+    cap = MyVideoCapture(config_file1)
 
     cv2.namedWindow("img", cv2.WINDOW_NORMAL)
     cv2.resizeWindow("img", 1200, 900)
@@ -164,8 +179,12 @@ if __name__ == '__main__':
         k = cv2.waitKey(1)
         if k == 27:
             break
+        elif k == ord("1"):  # 設定ファイルが切り替わる
+            cap.switch_properties(config_file1)
+        elif k == ord("2"):  # 設定ファイルが切り替わる
+            cap.switch_properties(config_file2)
         elif k == ord("s"):
-            cap.save_properties(config_file)
+            cap.save_properties(config_file1)
         elif k == ord("a"):
             cap.show_property_dialog()
 
