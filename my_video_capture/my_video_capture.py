@@ -96,7 +96,7 @@ class MyVideoCapture:
         if ret == tis.IC_FILE_NOT_FOUND or ret == tis.IC_DEVICE_NOT_FOUND or ret == tis.IC_WRONG_XML_FORMAT or \
                 ret == tis.IC_WRONG_INCOMPATIBLE_XML:
             self.ic.IC_MsgBox(tis.T("Can not load config"), tis.T("Error"))  # エラーウィンドウが表示される
-            if not self.ic.IC_IsDevValid(self._grabber):
+            if not self.ic.IC_IsDevValid(self._grabber):  # 設定ファイルが存在しない場合にカメラを開く
                 unique_name = self.ic.IC_GetUniqueNamefromList(0)
                 self.ic.IC_OpenDevByUniqueName(self._grabber, unique_name)  # カメラ接続
 
