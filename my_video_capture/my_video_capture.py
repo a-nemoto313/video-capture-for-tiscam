@@ -33,16 +33,16 @@ class MyVideoCapture:
         self._channel = 0                       # チャンネル数
         self._buffer_size = 0                   # バッファサイズ
 
-        self._grabber = None
+        self._grabber = self.ic.IC_CreateGrabber()
         self._get_device()  # カメラの接続を確認
-        self.load_properties(config_file_path)  # 設定を読み込む
+        self.load_properties(config_file_path, should_open_device=True)  # 設定を読み込む
 
         # 取得した画像をそのままnumpy配列に変換するとなぜか上下反転するので、反転させるフィルターを有効化しておく
         self._filter = tis.HFRAMEFILTER()
         self.ic.IC_CreateFrameFilter(tis.T("Rotate Flip"), self._filter)
 
         self._flip_image()
-        self.start()
+        self._start()
         self._get_image_description()
 
     def read(self):
@@ -81,32 +81,24 @@ class MyVideoCapture:
         """
         self.ic.IC_SaveDeviceStateToFile(self._grabber, tis.T(file_path))
 
-    def load_properties(self, config_file_path):
+    def load_properties(self, config_file_path, should_open_device=False):
         """
         設定ファイルのロード。上手く読み込めなかったらエラーメッセージ
         設定ファイルを切り替える際もこの関数を使用する
 
         Args:
             config_file_path (str):***.xml 読み込むファイルの場所
+            should_open_device (bool): OpenDeviceが 1 or 0
 
         """
-        if os.path.exists(config_file_path):  # 設定ファイルが存在する場合➔設定を読み込み、カメラを起動
-            self._grabber = self.ic.IC_LoadDeviceStateFromFile(self._grabber, tis.T(config_file_path))
-        else:  # 設定ファイルが存在しない場合➔カメラは起動するが、設定を読み込めなかったメッセージを表示
-            self._grabber = self.ic.IC_CreateGrabber()
-            unique_name = self.ic.IC_GetUniqueNamefromList(0)
-            self.ic.IC_OpenDevByUniqueName(self._grabber, unique_name)  # カメラ接続
+        ret = self.ic.IC_LoadDeviceStateFromFileEx(self._grabber, tis.T(config_file_path), should_open_device)
+        # 設定ファイルが存在しない場合、デバイスがない場合、xmlの形式が間違っている場合
+        if ret == tis.IC_FILE_NOT_FOUND or ret == tis.IC_DEVICE_NOT_FOUND or ret == tis.IC_WRONG_XML_FORMAT or \
+                ret == tis.IC_WRONG_INCOMPATIBLE_XML:
             self.ic.IC_MsgBox(tis.T("Can not load config"), tis.T("Error"))  # エラーウィンドウが表示される
-
-    def start(self, create_window=False):
-        """
-        画像の取得の開始
-
-        Args:
-            create_window (bool): Trueだと、tisgrabberがウィンドウを生成してくれる
-
-        """
-        self.ic.IC_StartLive(self._grabber, create_window)
+            if not self.ic.IC_IsDevValid(self._grabber):
+                unique_name = self.ic.IC_GetUniqueNamefromList(0)
+                self.ic.IC_OpenDevByUniqueName(self._grabber, unique_name)  # カメラ接続
 
     def show_property_dialog(self):
         """
@@ -128,6 +120,16 @@ class MyVideoCapture:
     def height(self):
         """画像の高さ"""
         return self._height.value
+
+    def _start(self, create_window=False):
+        """
+        画像の取得の開始
+
+        Args:
+            create_window (bool): Trueだと、tisgrabberがウィンドウを生成してくれる
+
+        """
+        self.ic.IC_StartLive(self._grabber, create_window)
 
     def _get_device(self):
         """カメラが接続されているか確認する"""
@@ -171,11 +173,8 @@ if __name__ == '__main__':
             break
         elif k == ord("1"):  # 設定ファイルが切り替わる
             cap.load_properties(config_file1)
-            cap.start()
         elif k == ord("2"):  # 設定ファイルが切り替わる
             cap.load_properties(config_file2)
-            cap.start()
-
         elif k == ord("s"):
             cap.save_properties(config_file1)
         elif k == ord("a"):
