@@ -7,7 +7,7 @@ opencv-python
 
 # インストール方法
 ```
-pip install git+https://このリポジトリのトークン@github.com/a-nemoto313/video-capture-for-tiscam.git 
+pip install git+https://github.com/a-nemoto313/video-capture-for-tiscam.git 
 ```
 
 # クイックスタート
