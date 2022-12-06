@@ -4,7 +4,7 @@ import os
 import cv2
 import numpy as np
 
-import tisgrabber as tis
+import my_video_capture.tisgrabber as tis
 
 
 class MyVideoCapture:
