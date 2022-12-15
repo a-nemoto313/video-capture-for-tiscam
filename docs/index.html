@@ -1,0 +1,176 @@
+
+<!DOCTYPE html>
+
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>MyVideoCapture ドキュメント</title>
+    <link rel="stylesheet" type="text/css" href="static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="static/classic.css" />
+    
+    <script data-url_root="./" id="documentation_options" src="static/documentation_options.js"></script>
+    <script src="static/jquery.js"></script>
+    <script src="static/underscore.js"></script>
+    <script src="static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="static/doctools.js"></script>
+    <script src="static/sphinx_highlight.js"></script>
+    <script src="static/translations.js"></script>
+    
+    <link rel="index" title="索引" href="genindex.html" />
+    <link rel="search" title="検索" href="search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>ナビゲーション</h3>
+      <ul>
+        <li class="nav-item nav-item-0"><a href="#">MyVideoCapture  ドキュメント</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">MyVideoCapture  ドキュメント</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="myvideocapture">
+<h1>MyVideoCaptureドキュメント<a class="headerlink" href="#myvideocapture" title="この見出しへのパーマリンク">¶</a></h1>
+<div class="toctree-wrapper compound">
+<span id="document-my_video_capture"></span><section id="module-my_video_capture">
+<span id="myvideocapture-module"></span><h2>MyVideoCapture module<a class="headerlink" href="#module-my_video_capture" title="この見出しへのパーマリンク">¶</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="my_video_capture.MyVideoCapture">
+<em class="property"><span class="pre">class</span><span class="w">  </span></em><span class="sig-prename descclassname"><span class="pre">my_video_capture.</span></span><span class="sig-name descname"><span class="pre">MyVideoCapture</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config_file_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dll_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'./tisgrabber_x64.dll'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#my_video_capture.MyVideoCapture" title="この定義へのパーマリンク">¶</a></dt>
+<dd><p>ベースクラス: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="my_video_capture.MyVideoCapture.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config_file_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dll_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'./tisgrabber_x64.dll'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#my_video_capture.MyVideoCapture.__init__" title="この定義へのパーマリンク">¶</a></dt>
+<dd><p>argoカメラクラス。単体カメラを表示するクラス</p>
+<dl class="field-list simple">
+<dt class="field-odd">パラメータ</dt>
+<dd class="field-odd"><p><strong>dll_path</strong> (<em>str</em>) -- tisgrabbe_x64.dllの場所</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="my_video_capture.MyVideoCapture.read">
+<span class="sig-name descname"><span class="pre">read</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#my_video_capture.MyVideoCapture.read" title="この定義へのパーマリンク">¶</a></dt>
+<dd><p>画像の取得</p>
+<dl class="field-list simple">
+<dt class="field-odd">戻り値</dt>
+<dd class="field-odd"><p>(画像を取得できたかどうか, 3ch画像)</p>
+</dd>
+<dt class="field-even">戻り値の型</dt>
+<dd class="field-even"><p>(bool, img or None)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="my_video_capture.MyVideoCapture.release">
+<span class="sig-name descname"><span class="pre">release</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#my_video_capture.MyVideoCapture.release" title="この定義へのパーマリンク">¶</a></dt>
+<dd><p>終了処理</p>
+</dd></dl>
+
+
+<dl class="py method">
+<dt class="sig sig-object py" id="my_video_capture.MyVideoCapture.save_properties">
+<span class="sig-name descname"><span class="pre">save_properties</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#my_video_capture.MyVideoCapture.save_properties" title="この定義へのパーマリンク">¶</a></dt>
+<dd><p>設定ファイルの保存。XML形式。</p>
+<dl class="field-list simple">
+<dt class="field-odd">パラメータ</dt>
+<dd class="field-odd"><p><strong>file_path</strong> (<em>str</em>) -- <a href="#id5"><span class="problematic" id="id6">**</span></a><a href="#id7"><span class="problematic" id="id8">*</span></a>.xml 保存する場所</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="my_video_capture.MyVideoCapture.load_properties">
+<span class="sig-name descname"><span class="pre">load_properties</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config_file_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">should_open_device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#my_video_capture.MyVideoCapture.load_properties" title="この定義へのパーマリンク">¶</a></dt>
+<dd><p>設定ファイルのロード。上手く読み込めなかったらエラーメッセージ
+設定ファイルを切り替える際もこの関数を使用する</p>
+<dl class="field-list simple">
+<dt class="field-odd">パラメータ</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>config_file_path</strong> (<em>str</em>) -- <a href="#id1"><span class="problematic" id="id2">**</span></a><a href="#id3"><span class="problematic" id="id4">*</span></a>.xml 読み込むファイルの場所</p></li>
+<li><p><strong>should_open_device</strong> (<em>bool</em>) -- OpenDeviceが 1 or 0</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="my_video_capture.MyVideoCapture.show_property_dialog">
+<span class="sig-name descname"><span class="pre">show_property_dialog</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#my_video_capture.MyVideoCapture.show_property_dialog" title="この定義へのパーマリンク">¶</a></dt>
+<dd><p>設定変更ウィンドウを表示</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="my_video_capture.MyVideoCapture.list_available_properties">
+<span class="sig-name descname"><span class="pre">list_available_properties</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#my_video_capture.MyVideoCapture.list_available_properties" title="この定義へのパーマリンク">¶</a></dt>
+<dd><p>設定可能な項目一覧を表示。なぜかライブ中だと表示できない。</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="my_video_capture.MyVideoCapture.width">
+<em class="property"><span class="pre">property</span><span class="w">  </span></em><span class="sig-name descname"><span class="pre">width</span></span><a class="headerlink" href="#my_video_capture.MyVideoCapture.width" title="この定義へのパーマリンク">¶</a></dt>
+<dd><p>画像の幅</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="my_video_capture.MyVideoCapture.height">
+<em class="property"><span class="pre">property</span><span class="w">  </span></em><span class="sig-name descname"><span class="pre">height</span></span><a class="headerlink" href="#my_video_capture.MyVideoCapture.height" title="この定義へのパーマリンク">¶</a></dt>
+<dd><p>画像の高さ</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</div>
+</section>
+<section id="indices-and-tables">
+<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="この見出しへのパーマリンク">¶</a></h1>
+<ul class="simple">
+<li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">索引</span></a></p></li>
+<li><p><a class="reference internal" href="py-modindex.html"><span class="std std-ref">モジュール索引</span></a></p></li>
+<li><p><a class="reference internal" href="search.html"><span class="std std-ref">検索ページ</span></a></p></li>
+</ul>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="#">目次</a></h3>
+    <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="index.html#document-my_video_capture">MyVideoCapture module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="index.html#my_video_capture.MyVideoCapture"><code class="docutils literal notranslate"><span class="pre">MyVideoCapture</span></code></a></li>
+</ul>
+</li>
+</ul>
+
+  </div>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>ナビゲーション</h3>
+      <ul>
+        <li class="nav-item nav-item-0"><a href="#">MyVideoCapture  ドキュメント</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">MyVideoCapture  ドキュメント</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2022, ito.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 5.3.0.
+    </div>
+  </body>
+</html>

@@ -1,1 +1,0 @@
-# video-capture-for-tiscam
