@@ -19,7 +19,7 @@ from my_video_capture.my_video_capture import MyVideoCapture
 cap = MyVideoCapture(config_file_path="camera_config.xml")
 
 while True:
-    _, frame = cap.read()
+    frame = cap.read()
 
     cv2.imshow("cam", frame)
     if cv2.waitKey(1) & 0xFF == 27:
