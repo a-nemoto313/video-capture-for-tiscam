@@ -38,6 +38,33 @@ class CallbackUserdata(ctypes.Structure):
         self.devicename = ""
         self.connected = False
 
+# ライブラリのルートロガーを作成
+logger = logging.getLogger('ic_camera_control')
+logger.addHandler(logging.NullHandler())
+
+
+def configure_logging(level=logging.WARNING, handler=None):
+    """ ライブラリのロガー設定を行う関数
+
+    Args:
+        level (int): ログレベル (e.g., logging.DEBUG, logging.INFO, etc.)
+        handler (logging.Handler): ログ出力先のハンドラー (省略時はStreamHandler)
+    """
+    if handler is None:
+        handler = logging.StreamHandler()
+
+    handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+    logger.addHandler(handler)
+    logger.setLevel(level)
+
+
+class CallbackUserdata(ctypes.Structure):
+    """  コールバック関数に渡されるユーザーデータの例 """
+    def __init__(self, ):
+        self.unsused = ""
+        self.devicename = ""
+        self.connected = False
+
 
 class MyVideoCapture:
     def __init__(
@@ -171,7 +198,6 @@ class MyVideoCapture:
 
         上手く読み込めなかったらエラーメッセージ
         設定ファイルを切り替える際もこの関数を使用する
-
         Args:
             config_file_path (str):***.xml 読み込むファイルの場所
             should_open_device (bool): OpenDeviceが 1 or 0
