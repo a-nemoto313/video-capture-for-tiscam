@@ -570,7 +570,7 @@ class MyVideoCapture:
 
     def set_frame_rate(self, value: float):
         """フレームレート(FrameRate)を設定する"""
-        if self.ic.IC_IsDevValid(self._hGrabber):
+        if self.ic.IC_IsLive(self._hGrabber):
             self.ic.IC_SetFrameRate(self._hGrabber, ctypes.c_float(value))
             return True
         else:
@@ -582,30 +582,71 @@ class MyVideoCapture:
         self.ic.IC_GetFrameRate(self._hGrabber, fps)
         return fps.value
 
-    def set_focus(self, value):
+    def set_focus(self, interest_area: list = None):
         """フォーカス(Focus)を設定する"""
+        if interest_area is not None & len(interest_area) == 4:
+            #フォーカス調整する関心領域
+            self.ic.IC_SetPropertyValue(self._hGrabber, tis.T("Focus"), tis.T("Left"), interest_area[0])
+            self.ic.IC_SetPropertyValue(self._hGrabber, tis.T("Focus"), tis.T("Top"), interest_area[1]) 
+            self.ic.IC_SetPropertyValue(self._hGrabber, tis.T("Focus"), tis.T("Right"), interest_area[2])
+            self.ic.IC_SetPropertyValue(self._hGrabber, tis.T("Focus"), tis.T("Bottom"), interest_area[3])
+            return True
         return False
 
-    def set_focus_auto(self, enable: bool = True):
+
+    def set_focus_auto(self, enable: bool= True, interest_area: list = None):
         """オートフォーカス(FocusAuto)を設定する"""
-        return False
+        if enable:
+            if self._set_property_switch("Focus", "Enable Region of Interest", enable) == tis.IC_SUCCESS:
+                self.set_focus(interest_area)
+                return True
+            else:
+                logger.warning("フォーカス制御をサポートしていない機種です。")
+                return False
+        else:
+            self._set_property_switch("Focus", "Enable Region of Interest", enable)
+            return True
+
 
     def set_flip_horizontal(self, enable: bool = True):
         """水平反転(FlipHorizontal)を設定する"""
-        enable = 1 if enable else 0
-        self.ic.IC_SetPropertySwitch(self._hGrabber, tis.T("Flip Horizontal"), tis.T("Enable"), enable)
-        print(enable)
-        auto = ctypes.c_long()
-        self.ic.IC_GetPropertySwitch(self._hGrabber, tis.T("Flip Horizontal"), tis.T("Enable"), auto)
-        print(auto.value)
+        self._set_property_switch("Flip Horizontal", "Enable", enable)
         return True
 
     def set_flip_vertical(self, enable: bool = True):
         """垂直反転(FlipVertical)を設定する"""
-        enable = 1 if enable else 0
-        self.ic.IC_SetPropertySwitch(self._hGrabber, tis.T("Flip Verical"), tis.T("Enable"), enable)
+        self._set_property_switch("Flip Verical", "Enable", enable)
         return True
 
+    def set_trigger(self, enable: bool = True):
+        """トリガーモード(Trigger)を設定する"""
+        self._set_property_switch("Trigger", "Enable", enable)
+        return True
+    
+    def get_trigger(self):
+        """トリガーモード(Trigger)を取得する"""
+        return self._get_property_switch("Trigger", "Enable")
+    
+    def trigger(self):
+        """トリガーモード(Trigger)を実行する"""
+        self.ic.IC_PropertyOnePush(self._hGrabber, tis.T("Trigger"), tis.T("Software Trigger"))
+
+    def auto_focus(self):
+        """オートフォーカス(AutoFocus)を実行する"""
+        if self.ic.IC_PropertyOnePush(self._hGrabber, tis.T("Focus"), tis.T("One Push")) == tis.IC_SUCCESS:
+            onepushrunning = ctypes.c_long()   
+
+            # オートフォーカスが終わるまで待つ
+            if self.ic.IC_GetPropertySwitch(self._hGrabber, tis.T("Focus"), tis.T("One Push Running"), onepushrunning) == tis.IC_SUCCESS:
+                while onepushrunning.value == 1:
+                    time.sleep(1)
+                    self.ic.IC_GetPropertySwitch(self._hGrabber, tis.T("Focus"), tis.T("One Push Running"), onepushrunning)
+            else:
+                return False
+            return True        
+        return False
+                    
+    
     def set(self, prop_id, value):
         """
         cv2.CAP_PROP_* に対応する値を設定する
