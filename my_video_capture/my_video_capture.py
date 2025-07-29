@@ -5,6 +5,7 @@ import logging
 import threading
 from typing import Callable
 
+import cv2
 import numpy as np
 
 from . import tisgrabber as tis
@@ -76,7 +77,6 @@ class MyVideoCapture:
         tis.declareFunctions(self.ic)
 
         self._grabber = self.ic.IC_CreateGrabber()
-        self._get_device()  # カメラの接続を確認
 
         self.load_properties(config_file_path, should_open_device=True)  # 設定を読み込む
         # ICImagingControlクラスライブラリを初期化
