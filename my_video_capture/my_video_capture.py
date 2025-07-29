@@ -3,6 +3,7 @@ import time
 import ctypes
 import logging
 import threading
+from typing import Callable
 
 import cv2
 import numpy as np
@@ -31,6 +32,7 @@ def configure_logging(level=logging.WARNING, handler=None):
 
 class CallbackUserdata(ctypes.Structure):
     """  コールバック関数に渡されるユーザーデータの例 """
+
     def __init__(self, ):
         self.unsused = ""
         self.devicename = ""
@@ -38,12 +40,24 @@ class CallbackUserdata(ctypes.Structure):
 
 
 class MyVideoCapture:
-    def __init__(self, config_file_path="", dll_path="./tisgrabber_x64.dll"):
+    def __init__(
+        self,
+        config_file_path: str = "",
+        dll_path: str = "./tisgrabber_x64.dll",
+        frame_ready_callback: "Callable[[ctypes.c_void_p, ctypes.c_void_p, ctypes.c_long, ctypes.c_void_p], None]" = None,
+        device_lost_callback: "Callable[[ctypes.c_void_p, CallbackUserdata], None]" = None,
+    ):
         """ 単体カメラを表示するクラス
 
         Args:
-            config_file_path(str): カメラのコンフィグファイルの場所
-            dll_path(str): tisgrabber_x64.dllの場所
+            config_file_path (str): カメラのコンフィグファイルの場所
+            dll_path (str): tisgrabber_x64.dllの場所
+            frame_ready_callback (Callable[[ctypes.c_void_p, ctypes.c_void_p, ctypes.c_long, ctypes.c_void_p], None], optional):
+                画像フレームが準備できたときに呼ばれるコールバック関数。
+                引数は (hGrabber, pBuffer, framenumber, pData)。
+            device_lost_callback (Callable[[ctypes.c_void_p, CallbackUserdata], None], optional):
+                デバイスが切断されたときに呼ばれるコールバック関数。
+                引数は (hGrabber, userdata)。
         """
         self._width = ctypes.c_long()  # 画像の幅
         self._height = ctypes.c_long()  # 画像の高さ
@@ -65,18 +79,16 @@ class MyVideoCapture:
         self.ic.IC_InitLibrary(0)
 
         # 関数ポインタを作成
-        self.frameReadyCallbackFunc = self.ic.FRAMEREADYCALLBACK(self._frameReadyCallback)
+        if frame_ready_callback is None:
+            frame_ready_callback = self._frameReadyCallback
+        self.frameReadyCallbackFunc = self.ic.FRAMEREADYCALLBACK(frame_ready_callback)
         self.userdata = CallbackUserdata()
-        self.deviceLostCallbackFunc = self.ic.DEVICELOSTCALLBACK(self._deviceLostCallback)
+        if device_lost_callback is None:
+            device_lost_callback = self._deviceLostCallback
+        self.deviceLostCallbackFunc = self.ic.DEVICELOSTCALLBACK(device_lost_callback)
 
         # デバイスを開く
         self.open_device(self._config_file_path)
-
-        # 取得した画像をそのままnumpy配列に変換するとなぜか上下反転するので、反転させるフィルターを有効化しておく
-        self._flip_image()
-
-        # 取得開始
-        self.start()
 
     @staticmethod
     def _frameReadyCallback(hGrabber, pBuffer, framenumber, pData):
@@ -101,11 +113,13 @@ class MyVideoCapture:
         logger.info("No device opened")
 
     def read(self):
-        """ 画像の取得
+        """
+        画像を取得する
 
         Returns:
-            (img or None): ch画像
-
+            tuple: (bool, np.ndarray or None)
+                画像取得に成功した場合は (True, 画像配列)、
+                失敗した場合は (False, None) を返す
         """
         if self.ic.IC_SnapImage(self._hGrabber, 2000) == tis.IC_SUCCESS:
             image_ptr = self.ic.IC_GetImagePtr(self._hGrabber)
@@ -113,14 +127,14 @@ class MyVideoCapture:
                 image_data = ctypes.cast(image_ptr, ctypes.POINTER(ctypes.c_ubyte * self._buffer_size))
                 img_array = np.ndarray(buffer=image_data.contents, dtype=np.uint8,
                                        shape=(self._height.value, self._width.value, self._channel))
-                return img_array
+                return True, img_array
 
         if self.userdata.connected is False:
             self.reconnect_wait()
 
-        return None
+        return False, None
 
-    def open_device(self, config_file_path):
+    def open_device(self, config_file_path: str = None):
         """ デバイスを開く
 
         設定ファイルがある場合は、設定ファイルの情報を元に開く
@@ -134,7 +148,8 @@ class MyVideoCapture:
         # 新しいグラバーハンドルを作成
         self._hGrabber = self.ic.IC_CreateGrabber()
 
-        self.load_properties(config_file_path, should_open_device=True)
+        if config_file_path is not None:
+            self.load_properties(config_file_path, should_open_device=True)
 
         if not self.ic.IC_IsDevValid(self._hGrabber):  # 設定ファイルが存在しない場合にカメラを開く
             self._hGrabber = self._select_device()
@@ -174,6 +189,14 @@ class MyVideoCapture:
         # 画像の解像度・フォーマットを取得
         self._get_image_description()
 
+        # 取得した画像をそのままnumpy配列に変換するとなぜか上下反転するので、反転させるフィルターを有効化しておく
+        self._flip_image()
+
+    def stop(self):
+        """ 画像の取得の停止 """
+        if self.ic.IC_IsLive(self._hGrabber):
+            self.ic.IC_StopLive(self._hGrabber)
+    
     def release(self):
         """ 終了処理 """
         if self.ic.IC_IsDevValid(self._hGrabber):
@@ -263,6 +286,409 @@ class MyVideoCapture:
     def userdate(self):
         """ カメラの情報 """
         return self.userdata
+
+    def set_video_format(self, format: str):
+        """解像度を設定する"""
+        try:
+            self.ic.IC_SetVideoFormat(self._hGrabber, tis.T(format))
+            return True
+        except Exception as e:
+            logger.error(f"Failed to set VideoFormat: {e}")
+            return False
+
+    def get_video_format(self):
+        """解像度を取得する"""
+        try:
+            format = ctypes.c_char_p()
+            self.ic.IC_GetVideoFormat(self._hGrabber, format)
+            return format.value.decode('utf-8')
+        except Exception as e:
+            logger.error(f"Failed to get VideoFormat: {e}")
+            return False
+
+    def get_color_format(self):
+        """カラーフォーマットを取得する"""
+        try:
+            # FOURCCはカメラのカラーフォーマットから推測
+            if hasattr(self, "_color_format"):
+                fmt = self._color_format.value.decode('utf-8') if hasattr(self._color_format, "value") else str(
+                    self._color_format)
+                # 例: "RGB24" -> cv2.VideoWriter_fourcc(*'RGB3')
+                if fmt.startswith("RGB"):
+                    return cv2.VideoWriter_fourcc(*'RGB3')
+                elif fmt.startswith("Y800"):
+                    return cv2.VideoWriter_fourcc(*'Y800')
+                elif fmt.startswith("Y16"):
+                    return cv2.VideoWriter_fourcc(*'Y16')
+                elif fmt.startswith("UYVY"):
+                    return cv2.VideoWriter_fourcc(*'UYVY')
+                # 他のフォーマットも必要に応じて追加
+            return None
+        except Exception as e:
+            logger.error(f"Failed to get ColorFormat: {e}")
+            return False
+
+    def _set_property_value(self, property_name: str, element_name: str, value) -> bool:
+        """共通プロパティ設定用内部メソッド"""
+        if self.ic.IC_IsLive(self._hGrabber):
+            logger.warning("プロパティはライブ中には設定できません")
+            return False
+        try:
+            self.ic.IC_SetPropertyValue(self._hGrabber, tis.T(property_name), tis.T(element_name), ctypes.c_float(value))
+            return True
+        except Exception as e:
+            logger.error(f"Failed to set {property_name}: {e}")
+            return False
+
+    def _get_property_value(self, property_name: str, element_name: str):
+        """共通プロパティ取得用内部メソッド"""
+        value = ctypes.c_float()
+        self.ic.IC_GetPropertyAbsoluteValue(self._hGrabber, tis.T(property_name), tis.T(element_name), value)
+        return value.value
+
+    def _set_property_absolute_value(self, property_name: str, element_name: str, value) -> bool:
+        """共通プロパティ絶対値設定用内部メソッド"""
+        if self.ic.IC_IsLive(self._hGrabber):
+            logger.warning("プロパティはライブ中には設定できません")
+            return False
+        try:
+            self.ic.IC_SetPropertyAbsoluteValue(self._hGrabber, tis.T(property_name), tis.T(element_name), ctypes.c_float(value))
+            return True
+        except Exception as e:
+            logger.error(f"Failed to set absolute {property_name}: {e}")
+            return False
+    
+    def _get_property_absolute_value(self, property_name: str, element_name: str):
+        """共通プロパティ絶対値取得用内部メソッド"""
+        value = ctypes.c_float()
+        self.ic.IC_GetPropertyAbsoluteValue(self._hGrabber, tis.T(property_name), tis.T(element_name), value)
+        return value.value
+
+    def _set_property_switch(self, property_name: str, element_name: str, enable: bool) -> bool:
+        """共通プロパティスイッチ設定用内部メソッド"""
+        if self.ic.IC_IsLive(self._hGrabber):
+            logger.warning("プロパティはライブ中には設定できません")
+            return False
+        try:
+            self.ic.IC_SetPropertySwitch(self._hGrabber, tis.T(property_name), tis.T(element_name), ctypes.c_long(1 if enable else 0))
+            return True
+        except Exception as e:
+            logger.error(f"Failed to set switch {property_name}: {e}")
+            return False
+
+    def _get_property_switch(self, property_name: str, element_name: str) -> bool:
+        """共通プロパティスイッチ取得用内部メソッド"""
+        try:
+            value = ctypes.c_long()
+            self.ic.IC_GetPropertySwitch(self._hGrabber, tis.T(property_name), tis.T(element_name), value)
+            return value.value == 1
+        except Exception as e:
+            logger.error(f"Failed to get switch {property_name}: {e}")
+            return False
+        
+    def _get_property_range(self, property_name: str, element_name: str):
+        """共通プロパティ範囲取得用内部メソッド"""
+        try:
+            min_value = ctypes.c_float()
+            max_value = ctypes.c_float()
+            self.ic.IC_GetPropertyAbsoluteValueRange(self._hGrabber, tis.T(property_name), tis.T(element_name), min_value, max_value)
+            return min_value.value, max_value.value
+        except Exception as e:
+            logger.error(f"Failed to get range {property_name}: {e}")
+            return
+
+    def set_brightness(self, value: float):
+        """明るさ(Brightness)を設定する"""
+        return self._set_property_value("Brightness", "Value", value)
+
+    def get_brightness(self):
+        """明るさ(Brightness)を取得する"""
+        return self._get_property_value("Brightness", "Value")
+
+    def set_contrast(self, value: float):
+        """コントラスト(Contrast)を設定する"""
+        return self._set_property_value("Contrast", "Value", value)
+
+    def get_contrast(self):
+        """コントラスト(Contrast)を取得する"""
+        return self._get_property_value("Contrast", "Value")
+
+    def set_hue(self, value: float):
+        """色相(Hue)を設定する"""
+        return self._set_property_value("Hue", "Value", value)
+
+    def get_hue(self):
+        """色相(Hue)を取得する"""
+        return self._get_property_value("Hue", "Value")
+
+    def set_saturation(self, value: float):
+        """彩度(Saturation)を設定する"""
+        return self._set_property_value("Saturation", "Value", value)
+
+    def get_saturation(self):
+        """彩度(Saturation)を取得する"""
+        return self._get_property_value("Saturation", "Value")
+
+    def set_sharpness(self, value: float):
+        """シャープネス(Sharpness)を設定する"""
+        return self._set_property_value("Sharpness", "Value", value)
+
+    def get_sharpness(self):
+        """シャープネス(Sharpness)を取得する"""
+        return self._get_property_value("Sharpness", "Value")
+
+    def set_gamma(self, value):
+        """ガンマ(Gamma)を設定する"""
+        return self._set_property_value("Gamma", "Value", value)
+
+    def get_gamma(self):
+        """ガンマ(Gamma)を取得する"""
+        return self._get_property_value("Gamma", "Value")
+
+    def set_whitebalance_auto(self, enable: bool = True):
+        """ホワイトバランス自動(WhiteBalanceAuto)を設定する"""
+        return self._set_property_switch("WhiteBalance", "Auto", enable)
+
+    def get_whitebalance_auto(self):
+        """ホワイトバランス自動(WhiteBalanceAuto)を取得する"""
+        return self._get_property_switch("WhiteBalance", "Auto")
+
+    def set_whitebalance(self, value: list) -> bool:
+        """ホワイトバランス(WhiteBalance)を設定する"""
+        try:
+            self.set_whitebalance_auto(False)
+            self._set_property_absolute_value("WhiteBalance", "White Balance Red", value[0])
+            self._set_property_absolute_value("WhiteBalance", "White Balance Green", value[1])
+            self._set_property_absolute_value("WhiteBalance", "White Balance Blue", value[2])
+            return True
+        except Exception as e:
+            logger.error(f"Failed to set WhiteBalance: {e}")
+            return False
+    
+    def set_whitebalance_red(self, value: float):
+        """ホワイトバランス(WhiteBalance)を設定する"""
+        try:
+            self.set_whitebalance_auto(False)
+            return self._set_property_absolute_value("WhiteBalance", "White Balance Red", value)
+        except Exception as e:
+            logger.error(f"Failed to set WhiteBalance: {e}")
+            return False
+    
+    def set_whitebalance_green(self, value: float):
+        """ホワイトバランス(WhiteBalance)を設定する"""
+        try:
+            self.set_whitebalance_auto(False)
+            return self._set_property_absolute_value("WhiteBalance", "White Balance Green", value)
+        except Exception as e:
+            logger.error(f"Failed to set WhiteBalance: {e}")
+            return False
+    
+    def set_whitebalance_blue(self, value: float):
+        """ホワイトバランス(WhiteBalance)を設定する"""
+        try:
+            self.set_whitebalance_auto(False)
+            return self._set_property_absolute_value("WhiteBalance", "White Balance Blue", value)
+        except Exception as e:
+            logger.error(f"Failed to set WhiteBalance: {e}")
+            return False
+
+    def get_whitebalance(self) -> tuple:
+        """ホワイトバランス(WhiteBalance)を取得する"""
+        whiteBalanceRed = self._get_property_absolute_value("WhiteBalance", "White Balance Red")
+        whiteBalanceGreen = self._get_property_absolute_value("WhiteBalance", "White Balance Green")
+        whiteBalanceBlue = self._get_property_absolute_value("WhiteBalance", "White Balance Blue")
+
+        return (whiteBalanceRed, whiteBalanceGreen, whiteBalanceBlue)
+    
+    def get_whitebalance_red(self):
+        """ホワイトバランス(WhiteBalance)を取得する"""
+        whiteBalanceRed = self._get_property_absolute_value("WhiteBalance", "White Balance Red")
+        return whiteBalanceRed
+
+    def get_whitebalance_green(self):
+        """ホワイトバランス(WhiteBalance)を取得する"""
+        whiteBalanceGreen = self._get_property_absolute_value("WhiteBalance", "White Balance Green")
+        return whiteBalanceGreen
+
+    def get_whitebalance_blue(self):
+        """ホワイトバランス(WhiteBalance)を取得する"""
+        whiteBalanceBlue = self._get_property_absolute_value("WhiteBalance", "White Balance Blue")
+        return whiteBalanceBlue
+
+    def set_gain_auto(self, enable: bool = True):
+        """ゲイン自動(GainAuto)を設定する"""
+        return self._set_property_switch("Gain", "Auto", enable)
+
+    def get_gain_auto(self):
+        """ゲイン自動(GainAuto)を取得する"""
+        return self._get_property_switch("Gain", "Auto")
+
+    def set_gain(self, value):
+        """ゲイン(Gain)を設定する"""
+        try:
+            self.set_gain_auto(False)
+            return self._set_property_absolute_value("Gain", "Value", value)
+        except Exception as e:
+            logger.error(f"Failed to set Gain: {e}")
+            return False
+
+    def get_gain(self):
+        """ゲイン(Gain)を取得する"""
+        gainmin, gainmax = self._get_property_range("Gain", "Value")
+        gain = self._get_property_absolute_value("Gain", "Value")
+
+        return gain, gainmin, gainmax
+
+    def set_exposure_auto(self, enable: bool = True):
+        """露光時間自動(ExposureAuto)を設定する"""
+        return self._set_property_switch("Exposure", "Auto", enable)
+
+    def get_exposure_auto(self):
+        """露光時間自動(ExposureAuto)を取得する"""
+        return self._get_property_switch("Exposure", "Auto")
+
+    def set_exposure(self, value: float):
+        """露光時間(Exposure)を設定する"""
+        try:
+            self.set_exposure_auto(False)
+            return self._set_property_absolute_value("Exposure", "Value", value)
+        except Exception as e:
+            logger.error(f"Failed to set Exposure: {e}")
+            return False
+
+    def get_exposure(self):
+        """露光時間(Exposure)を取得する"""
+        expmin, expmax = self._get_property_range("Exposure", "Value")
+        exposure = self._get_property_absolute_value("Exposure", "Value")
+
+        return exposure, expmin, expmax
+
+    def set_frame_rate(self, value: float):
+        """フレームレート(FrameRate)を設定する"""
+        if self.ic.IC_IsDevValid(self._hGrabber):
+            self.ic.IC_SetFrameRate(self._hGrabber, ctypes.c_float(value))
+            return True
+        else:
+            return False
+
+    def get_frame_rate(self):
+        """フレームレート(FrameRate)を取得する"""
+        fps = ctypes.c_float()
+        self.ic.IC_GetFrameRate(self._hGrabber, fps)
+        return fps.value
+
+    def set_focus(self, value):
+        """フォーカス(Focus)を設定する"""
+        return False
+
+    def set_focus_auto(self, enable: bool = True):
+        """オートフォーカス(FocusAuto)を設定する"""
+        return False
+    
+    def set_flip_horizontal(self, enable: bool = True):
+        """水平反転(FlipHorizontal)を設定する"""
+        enable = 1 if enable else 0
+        self.ic.IC_SetPropertySwitch(self._hGrabber, tis.T("Flip Horizontal"), tis.T("Enable"), enable)
+        print(enable)
+        auto = ctypes.c_long()
+        self.ic.IC_GetPropertySwitch(self._hGrabber, tis.T("Flip Horizontal"), tis.T("Enable"), auto)
+        print(auto.value)
+        return True
+
+    def set_flip_vertical(self, enable: bool = True):
+        """垂直反転(FlipVertical)を設定する"""
+        enable = 1 if enable else 0
+        self.ic.IC_SetPropertySwitch(self._hGrabber, tis.T("Flip Verical"), tis.T("Enable"), enable)
+        return True
+
+    def set(self, prop_id, value):
+        """
+        cv2.CAP_PROP_* に対応する値を設定する
+
+        Args:
+            prop_id (int): cv2.CAP_PROP_* のID
+            value: 設定する値
+        """
+        if prop_id == cv2.CAP_PROP_FRAME_WIDTH:
+            return False
+        elif prop_id == cv2.CAP_PROP_FRAME_HEIGHT:
+            return False
+        elif prop_id == cv2.CAP_PROP_FPS:
+            return self.set_frame_rate(value)
+        elif prop_id == cv2.CAP_PROP_BRIGHTNESS:
+            return self.set_brightness(value)
+        elif prop_id == cv2.CAP_PROP_CONTRAST:
+            return self.set_contrast(value)
+        elif prop_id == cv2.CAP_PROP_SATURATION:
+            return self.set_saturation(value)
+        elif prop_id == cv2.CAP_PROP_HUE:
+            return self.set_hue(value)
+        elif prop_id == cv2.CAP_PROP_GAIN:
+            return self.set_gain(value)
+        elif prop_id == cv2.CAP_PROP_EXPOSURE:
+            return self.set_exposure(value)
+        elif prop_id == cv2.CAP_PROP_GAMMA:
+            return self.set_gamma(value)
+        elif prop_id == cv2.CAP_PROP_SHARPNESS:
+            return self.set_sharpness(value)
+        elif prop_id == cv2.CAP_PROP_WHITE_BALANCE_BLUE_U:
+            return self.set_whitebalance_blue(value)
+        elif prop_id == cv2.CAP_PROP_WHITE_BALANCE_RED_V:
+            return self.set_whitebalance_red(value)
+        elif prop_id == cv2.CAP_PROP_AUTOFOCUS:
+            return self.set_focus_auto(value)
+        elif prop_id == cv2.CAP_PROP_FOCUS:
+            return self.set_focus(value)
+        else:
+            return False
+
+    def get(self, prop_id):
+        """
+        cv2.CAP_PROP_* に対応する値を返す
+
+        Args:
+            prop_id (int): cv2.CAP_PROP_* のID
+
+        Returns:
+            対応する値、または None
+        """
+        if prop_id == cv2.CAP_PROP_FRAME_WIDTH:
+            return self.width
+        elif prop_id == cv2.CAP_PROP_FRAME_HEIGHT:
+            return self.height
+        elif prop_id == cv2.CAP_PROP_FPS:
+            return self.get_frame_rate()
+        elif prop_id == cv2.CAP_PROP_FOURCC:
+            return self.get_color_format()
+        elif prop_id == cv2.CAP_PROP_FRAME_COUNT:
+            # ライブカメラなのでフレーム数は不定
+            return 0
+        elif prop_id == cv2.CAP_PROP_BRIGHTNESS:
+            return self.get_brightness()
+        elif prop_id == cv2.CAP_PROP_CONTRAST:
+            return self.get_contrast()
+        elif prop_id == cv2.CAP_PROP_SATURATION:
+            return self.get_saturation()
+        elif prop_id == cv2.CAP_PROP_HUE:
+            return self.get_hue()
+        elif prop_id == cv2.CAP_PROP_GAIN:
+            return self.get_gain()
+        elif prop_id == cv2.CAP_PROP_EXPOSURE:
+            return self.get_exposure()
+        elif prop_id == cv2.CAP_PROP_GAMMA:
+            return self.get_gamma()
+        elif prop_id == cv2.CAP_PROP_SHARPNESS:
+            return self.get_sharpness()
+        elif prop_id == cv2.CAP_PROP_WHITE_BALANCE_BLUE_U:
+            return self.get_whitebalance_blue()
+        elif prop_id == cv2.CAP_PROP_WHITE_BALANCE_RED_V:
+            return self.get_whitebalance_red()
+        elif prop_id == cv2.CAP_PROP_AUTOFOCUS:
+            return self.get_focus_auto()
+        elif prop_id == cv2.CAP_PROP_FOCUS:
+            return self.get_focus()
+        else:
+            return None
 
 
 if __name__ == '__main__':
