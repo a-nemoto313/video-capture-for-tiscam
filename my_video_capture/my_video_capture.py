@@ -5,7 +5,6 @@ import logging
 import threading
 from typing import Callable
 
-import cv2
 import numpy as np
 
 from . import tisgrabber as tis
@@ -50,6 +49,7 @@ class MyVideoCapture:
         """ 単体カメラを表示するクラス
 
         Args:
+            dll_path (str): tisgrabber_x64.dllの場所
             config_file_path (str): カメラのコンフィグファイルの場所
             dll_path (str): tisgrabber_x64.dllの場所
             frame_ready_callback (Callable[[ctypes.c_void_p, ctypes.c_void_p, ctypes.c_long, ctypes.c_void_p], None], optional):
@@ -75,6 +75,10 @@ class MyVideoCapture:
         os.chdir(main_dir)
         tis.declareFunctions(self.ic)
 
+        self._grabber = self.ic.IC_CreateGrabber()
+        self._get_device()  # カメラの接続を確認
+
+        self.load_properties(config_file_path, should_open_device=True)  # 設定を読み込む
         # ICImagingControlクラスライブラリを初期化
         self.ic.IC_InitLibrary(0)
 
@@ -167,6 +171,7 @@ class MyVideoCapture:
 
         上手く読み込めなかったらエラーメッセージ
         設定ファイルを切り替える際もこの関数を使用する
+
         Args:
             config_file_path (str):***.xml 読み込むファイルの場所
             should_open_device (bool): OpenDeviceが 1 or 0
@@ -196,7 +201,7 @@ class MyVideoCapture:
         """ 画像の取得の停止 """
         if self.ic.IC_IsLive(self._hGrabber):
             self.ic.IC_StopLive(self._hGrabber)
-    
+
     def release(self):
         """ 終了処理 """
         if self.ic.IC_IsDevValid(self._hGrabber):
@@ -357,7 +362,7 @@ class MyVideoCapture:
         except Exception as e:
             logger.error(f"Failed to set absolute {property_name}: {e}")
             return False
-    
+
     def _get_property_absolute_value(self, property_name: str, element_name: str):
         """共通プロパティ絶対値取得用内部メソッド"""
         value = ctypes.c_float()
@@ -385,7 +390,7 @@ class MyVideoCapture:
         except Exception as e:
             logger.error(f"Failed to get switch {property_name}: {e}")
             return False
-        
+
     def _get_property_range(self, property_name: str, element_name: str):
         """共通プロパティ範囲取得用内部メソッド"""
         try:
@@ -464,7 +469,7 @@ class MyVideoCapture:
         except Exception as e:
             logger.error(f"Failed to set WhiteBalance: {e}")
             return False
-    
+
     def set_whitebalance_red(self, value: float):
         """ホワイトバランス(WhiteBalance)を設定する"""
         try:
@@ -473,7 +478,7 @@ class MyVideoCapture:
         except Exception as e:
             logger.error(f"Failed to set WhiteBalance: {e}")
             return False
-    
+
     def set_whitebalance_green(self, value: float):
         """ホワイトバランス(WhiteBalance)を設定する"""
         try:
@@ -482,7 +487,7 @@ class MyVideoCapture:
         except Exception as e:
             logger.error(f"Failed to set WhiteBalance: {e}")
             return False
-    
+
     def set_whitebalance_blue(self, value: float):
         """ホワイトバランス(WhiteBalance)を設定する"""
         try:
@@ -499,7 +504,7 @@ class MyVideoCapture:
         whiteBalanceBlue = self._get_property_absolute_value("WhiteBalance", "White Balance Blue")
 
         return (whiteBalanceRed, whiteBalanceGreen, whiteBalanceBlue)
-    
+
     def get_whitebalance_red(self):
         """ホワイトバランス(WhiteBalance)を取得する"""
         whiteBalanceRed = self._get_property_absolute_value("WhiteBalance", "White Balance Red")
@@ -584,7 +589,7 @@ class MyVideoCapture:
     def set_focus_auto(self, enable: bool = True):
         """オートフォーカス(FocusAuto)を設定する"""
         return False
-    
+
     def set_flip_horizontal(self, enable: bool = True):
         """水平反転(FlipHorizontal)を設定する"""
         enable = 1 if enable else 0
@@ -692,15 +697,21 @@ class MyVideoCapture:
 
 
 if __name__ == '__main__':
+    import cv2
+
     config_file1 = ""
     config_file2 = ""
 
     cap = MyVideoCapture(config_file1)
 
-    cv2.namedWindow("img", cv2.WINDOW_NORMAL)
-    cv2.resizeWindow("img", 1200, 900)
+    window_width = 1200
+    window_height = 900
 
     print(cap.userdata.devicename)
+    cv2.namedWindow("config 1", cv2.WINDOW_NORMAL)
+    cv2.resizeWindow("config 1", window_width, window_height)
+    cv2.namedWindow("config 2", cv2.WINDOW_NORMAL)
+    cv2.resizeWindow("config 2", window_width, window_height)
     while True:
         if cap.userdata.connected is False:
             while not cap.userdata.connected:
@@ -711,10 +722,18 @@ if __name__ == '__main__':
         k = cv2.waitKey(1)
         if k == 27:
             break
+
         elif k == ord("1"):  # 設定ファイルが切り替わる
             cap.load_properties(config_file1)
+            # ちゃんと設定変更後の画像が取得できているか確認。特に露光。
+            _, frame = cap.read()
+            cv2.imshow("config 1", frame)
         elif k == ord("2"):  # 設定ファイルが切り替わる
             cap.load_properties(config_file2)
+            # ちゃんと設定変更後の画像が取得できているか確認。特に露光。
+            _, frame = cap.read()
+            cv2.imshow("config 2", frame)
+
         elif k == ord("s"):
             cap.save_properties(config_file1)
         elif k == ord("a"):

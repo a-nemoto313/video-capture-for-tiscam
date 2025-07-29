@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name="MyVideoCapture",
-    version="1.1.1",
+    version="1.2.0",
     description="read camera",
     url="https://github.com/a-nemoto313/video-capture-for-tiscam",
     packages=["my_video_capture"],
